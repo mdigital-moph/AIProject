@@ -203,7 +203,7 @@
     <script>
         // --- Configuration ---
         // 🚨 REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL 🚨
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbzenOXo4ZG1sjGn8SWyluse2twaiXhfsSho-4dO4tI0ywa6XU56gMqwq7CSe9QtbncNEg/exec"; 
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwt-SwJQRMIv2cjvFxxbwzM-AehQPkupPyd0ydw6SelGRHqdyFofvzhYyYi9WNdBH_dog/exec"; 
 
         // Global state
         let allParties = [];
@@ -227,7 +227,7 @@
         
         /** General fetch function with error handling and retry logic */
         async function fetchApi(action, method = 'GET', data = null, retries = 3) {
-            if (GAS_URL === "https://script.google.com/macros/s/AKfycbzenOXo4ZG1sjGn8SWyluse2twaiXhfsSho-4dO4tI0ywa6XU56gMqwq7CSe9QtbncNEg/exec") {
+            if (GAS_URL === "YOUR_GAS_WEB_APP_URL_HERE") {
                 showMessage("โปรดเปลี่ยน GAS_URL ในโค้ด JavaScript ให้เป็น Web App URL ที่คุณ Deploy แล้ว");
                 return null;
             }
@@ -262,7 +262,11 @@
                         // Exponential backoff: 1s, 2s, 4s delay
                         await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
                     } else {
-                        showMessage(`เกิดข้อผิดพลาดในการเชื่อมต่อ/ประมวลผล: ${error.message}. โปรดตรวจสอบ URL หรือ Google Apps Script Console.`);
+                        // 🚨 Added detailed instruction for deployment issue 🚨
+                        console.error("🚨 IMPORTANT: If you see 'Failed to fetch', ensure your Google Apps Script is deployed as a Web App with 'Execute as: Me' and 'Who has access: Anyone'. This is usually a CORS/Deployment permission error. 🚨");
+                        showMessage(`เกิดข้อผิดพลาดในการเชื่อมต่อ/ประมวลผล (${error.message}). โปรดตรวจสอบ:
+1. URL ในโค้ดถูกต้อง
+2. การตั้งค่า Deploy ใน Apps Script: "Execute as: Me" และ "Who has access: Anyone"`);
                         return null;
                     }
                 }
@@ -332,12 +336,6 @@
             tableBody.innerHTML = allParties.map(fullName => {
                 // We don't have separate name/lastname/position in allParties array, so we'll re-fetch them for display if needed.
                 // For simplicity, we assume we fetch the full object again to get position.
-                // Since the GAS script returns full objects, let's refactor allParties to hold objects.
-                
-                const partyObj = allParties.find(p => `${p['ชื่อ']} ${p['นามสกุล']}` === fullName);
-                
-                // Note: since allParties is currently an array of strings (full names), 
-                // we'll reload parties for full data display here, assuming a full reload is too heavy.
                 // For now, let's stick to the simplest rendering:
                 return `
                     <tr class="hover:bg-teal-50">
