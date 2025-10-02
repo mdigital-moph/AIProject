@@ -78,8 +78,15 @@
         <div id="api-setup-card" class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg hidden">
             <p class="font-bold mb-2">🚨 คำเตือน: ยังไม่ได้ตั้งค่า API!</p>
             <p class="text-sm mb-4">โปรดใส่ URL ของ Google Apps Script Web App (จากการ Deploy ไฟล์ `Code.gs`) ด้านล่างนี้:</p>
-            <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/AKfycbyN2pscleCHOkm6TKjSU2oDX3-tR1pVBatL9b_ZyRk45_2G0RFnZCwBTU7Hq5DXn9E1-w/exec" class="w-full p-2 border border-red-300 rounded-md text-gray-800 focus:ring-red-500 focus:border-red-500">
-            <button onclick="setApiUrl()" class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition duration-150">บันทึก URL API</button>
+            <input type="text" id="api-url-input" placeholder="ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec" class="w-full p-2 border border-red-300 rounded-md text-gray-800 focus:ring-red-500 focus:border-red-500">
+            <div class="flex space-x-3 mt-3">
+                <button onclick="setApiUrl()" class="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150">
+                    <i data-lucide="save" class="w-4 h-4 inline mr-1"></i> บันทึก URL API
+                </button>
+                <button onclick="clearApiUrl()" class="px-4 py-2 bg-gray-500 text-white text-sm font-medium rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150">
+                    <i data-lucide="trash-2" class="w-4 h-4 inline mr-1"></i> ล้าง URL
+                </button>
+            </div>
         </div>
 
         <!-- Global Status/Message Container -->
@@ -235,7 +242,7 @@
     <script>
         // --- Configuration & Global State ---
         // กำหนด URL ของ Google Apps Script Web App ที่ผู้ใช้ให้มาเป็นค่าเริ่มต้น
-        const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBCFsqRpVhQrZKEwuu5iW9PluzN2RVNU6ajzNm-BWDSArowUHvVTQM2RKLaCVYRerZEQ/exec";
+        const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyN2pscleCHOkm6TKjSU2oDX3-tR1pVBatL9b_ZyRk45_2G0RFnZCwBTU7Hq5DXn9E1-w/exec";
         let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || DEFAULT_APPS_SCRIPT_URL;
 
         const SHEET_NAMES = {
@@ -317,11 +324,13 @@
                     return result.data;
                 } else {
                     showStatus(`Error fetching data for ${action}: ${result.error || 'Unknown error'}`, 'error');
+                    // Log the detailed error from the API response
+                    console.error(`API Error for ${action}:`, result.error, result.stack);
                     return null;
                 }
             } catch (error) {
                 toggleLoading(false);
-                showStatus(`Failed to connect to API: ${error.message}`, 'error');
+                showStatus(`Failed to connect to API: ${error.message}. กรุณาตรวจสอบการตั้งค่า Deploy (สิทธิ์การเข้าถึงต้องเป็น 'Anyone')`, 'error');
                 console.error("API Call Error:", error);
                 return null;
             }
@@ -354,11 +363,13 @@
                     return true;
                 } else {
                     showStatus(`การบันทึกข้อมูลไม่สำเร็จ: ${result.error}`, 'error');
+                    // Log the detailed error from the API response
+                    console.error(`API Error for ${action}:`, result.error, result.stack);
                     return false;
                 }
             } catch (error) {
                 toggleLoading(false);
-                showStatus(`การเชื่อมต่อ API ล้มเหลว: ${error.message}`, 'error');
+                showStatus(`การเชื่อมต่อ API ล้มเหลว: ${error.message}. กรุณาตรวจสอบการตั้งค่า Deploy (สิทธิ์การเข้าถึงต้องเป็น 'Anyone')`, 'error');
                 console.error("API POST Error:", error);
                 return false;
             }
@@ -808,15 +819,23 @@
 
         function setApiUrl() {
             const urlInput = document.getElementById('api-url-input').value.trim();
-            if (urlInput && urlInput.startsWith('http')) {
+            if (urlInput && urlInput.startsWith('http') && urlInput.endsWith('/exec')) {
                 APPS_SCRIPT_URL = urlInput;
                 localStorage.setItem('appsScriptUrl', APPS_SCRIPT_URL);
                 document.getElementById('api-setup-card').classList.add('hidden');
                 showStatus('บันทึก URL API เรียบร้อยแล้ว! กำลังโหลดข้อมูล...', 'success');
                 refreshAllData();
             } else {
-                showStatus('กรุณาใส่ URL ของ Google Apps Script Web App ที่ถูกต้อง', 'error');
+                showStatus('กรุณาใส่ URL ของ Google Apps Script Web App ที่ถูกต้อง (ต้องลงท้ายด้วย /exec)', 'error');
             }
+        }
+
+        function clearApiUrl() {
+            localStorage.removeItem('appsScriptUrl');
+            APPS_SCRIPT_URL = DEFAULT_APPS_SCRIPT_URL; // Revert to the default hardcoded URL
+            document.getElementById('api-url-input').value = APPS_SCRIPT_URL;
+            showApiSetupWarning();
+            showStatus('ล้าง URL API ที่บันทึกไว้ในเครื่องแล้ว กรุณาบันทึก URL ใหม่หรือใช้ค่าเริ่มต้น', 'info');
         }
 
         // --- Initialization ---
@@ -827,10 +846,8 @@
             
             // Check API URL on load
             if (!APPS_SCRIPT_URL) {
-                // หาก URL ว่างเปล่าจริง ๆ (ไม่ควรเกิดขึ้นแล้วเนื่องจากมี DEFAULT)
                 showApiSetupWarning();
             } else {
-                // เมื่อมี URL แล้ว (จากค่าเริ่มต้นหรือ localStorage) ให้ซ่อนกล่องเตือนและเริ่มโหลดข้อมูล
                 document.getElementById('api-setup-card').classList.add('hidden');
                 refreshAllData();
             }
