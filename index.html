@@ -227,7 +227,7 @@
         
         /** General fetch function with error handling and retry logic */
         async function fetchApi(action, method = 'GET', data = null, retries = 3) {
-            if (GAS_URL === "YOUR_GAS_WEB_APP_URL_HERE") {
+            if (GAS_URL === "https://script.google.com/macros/s/AKfycbzenOXo4ZG1sjGn8SWyluse2twaiXhfsSho-4dO4tI0ywa6XU56gMqwq7CSe9QtbncNEg/exec") {
                 showMessage("โปรดเปลี่ยน GAS_URL ในโค้ด JavaScript ให้เป็น Web App URL ที่คุณ Deploy แล้ว");
                 return null;
             }
