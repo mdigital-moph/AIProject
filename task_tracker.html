@@ -206,7 +206,7 @@
         const GAS_URL = "https://script.google.com/macros/s/AKfycbwt-SwJQRMIv2cjvFxxbwzM-AehQPkupPyd0ydw6SelGRHqdyFofvzhYyYi9WNdBH_dog/exec"; 
 
         // Global state
-        let allParties = [];
+        let allParties = []; // Now stores array of {ชื่อ, นามสกุล, ตำแหน่ง} objects
         let allTasks = [];
         let selectedResponsibleParties = [];
         let projectChartInstance = null;
@@ -227,11 +227,9 @@
         
         /** General fetch function with error handling and retry logic */
         async function fetchApi(action, method = 'GET', data = null, retries = 3) {
-            if (GAS_URL === "YOUR_GAS_WEB_APP_URL_HERE") {
-                showMessage("โปรดเปลี่ยน GAS_URL ในโค้ด JavaScript ให้เป็น Web App URL ที่คุณ Deploy แล้ว");
-                return null;
-            }
-
+            // Note: The check for GAS_URL === "YOUR_GAS_WEB_APP_URL_HERE" is REMOVED 
+            // because the URL is now correctly set.
+            
             const url = `${GAS_URL}?action=${action}`;
             const options = {
                 method: method,
@@ -249,7 +247,14 @@
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                        // Check for common GAS script error (not deployed correctly or internal script error)
+                        let errorDetail = response.statusText;
+                        try {
+                            const errorJson = await response.json();
+                            errorDetail = errorJson.message || errorDetail;
+                        } catch (e) { /* ignore if not JSON */ }
+
+                        throw new Error(`HTTP error! Status: ${response.status}. Detail: ${errorDetail}`);
                     }
                     const result = await response.json();
                     if (!result.success) {
@@ -257,15 +262,16 @@
                     }
                     return result;
                 } catch (error) {
+                    // Log the fetch failure attempt
                     console.error(`Attempt ${i + 1} failed for ${action}:`, error);
                     if (i < retries - 1) {
                         // Exponential backoff: 1s, 2s, 4s delay
                         await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
                     } else {
-                        // 🚨 Added detailed instruction for deployment issue 🚨
-                        console.error("🚨 IMPORTANT: If you see 'Failed to fetch', ensure your Google Apps Script is deployed as a Web App with 'Execute as: Me' and 'Who has access: Anyone'. This is usually a CORS/Deployment permission error. 🚨");
+                        // 🚨 Show the most critical troubleshooting steps after final failure 🚨
+                        console.error("🚨 CRITICAL: Check Google Apps Script deployment settings. 🚨");
                         showMessage(`เกิดข้อผิดพลาดในการเชื่อมต่อ/ประมวลผล (${error.message}). โปรดตรวจสอบ:
-1. URL ในโค้ดถูกต้อง
+1. URL ในโค้ดถูกต้องแล้ว (ยืนยัน)
 2. การตั้งค่า Deploy ใน Apps Script: "Execute as: Me" และ "Who has access: Anyone"`);
                         return null;
                     }
@@ -281,10 +287,9 @@
                 // Fetch Parties
                 const partiesResult = await fetchApi('getParties');
                 if (partiesResult) {
-                    // Extract full name for responsible party list
-                    allParties = partiesResult.data
-                        .filter(p => p['ชื่อ'] && p['นามสกุล'])
-                        .map(p => `${p['ชื่อ']} ${p['นามสกุล']}`);
+                    // STORE FULL OBJECTS: {ชื่อ, นามสกุล, ตำแหน่ง}
+                    allParties = partiesResult.data; 
+                    
                     renderPartyList();
                     setupResponsibleDropdown();
                 }
@@ -330,18 +335,16 @@
 
         // --- Rendering Functions ---
 
-        /** Renders the list of responsible parties in the Party List table. */
+        /** Renders the list of responsible parties in the Party List table. (Updated to use full objects) */
         function renderPartyList() {
             const tableBody = document.getElementById('party-list-table');
-            tableBody.innerHTML = allParties.map(fullName => {
-                // We don't have separate name/lastname/position in allParties array, so we'll re-fetch them for display if needed.
-                // For simplicity, we assume we fetch the full object again to get position.
-                // For now, let's stick to the simplest rendering:
+            // allParties now contains objects {ชื่อ, นามสกุล, ตำแหน่ง}
+            tableBody.innerHTML = allParties.map(party => { 
                 return `
                     <tr class="hover:bg-teal-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${fullName.split(' ')[0] || ''}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${fullName.split(' ')[1] || ''}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">N/A (ตำแหน่ง)</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${party['ชื่อ'] || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${party['นามสกุล'] || ''}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${party['ตำแหน่ง'] || '-'}</td>
                     </tr>
                 `;
             }).join('') || '<tr><td colspan="3" class="text-center p-4 text-gray-500">ไม่มีผู้รับผิดชอบที่ถูกเพิ่ม</td></tr>';
@@ -409,7 +412,12 @@
             const dropdown = document.getElementById('responsible-dropdown');
             dropdown.innerHTML = '';
             
-            allParties.forEach(person => {
+            // Calculate full names from allParties objects (new structure)
+            const fullNames = allParties
+                .filter(p => p['ชื่อ'] && p['นามสกุล'])
+                .map(p => `${p['ชื่อ']} ${p['นามสกุล']}`);
+
+            fullNames.forEach(person => {
                 const div = document.createElement('div');
                 div.className = 'p-2 cursor-pointer hover:bg-teal-100 text-gray-700 transition duration-100';
                 div.textContent = person;
