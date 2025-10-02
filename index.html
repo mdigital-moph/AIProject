@@ -78,7 +78,7 @@
         <div id="api-setup-card" class="mb-6 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 rounded-lg hidden">
             <p class="font-bold mb-2">🚨 คำเตือน: ยังไม่ได้ตั้งค่า API!</p>
             <p class="text-sm mb-4">โปรดใส่ URL ของ Google Apps Script Web App (จากการ Deploy ไฟล์ `Code.gs`) ด้านล่างนี้:</p>
-            <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/AKfycbzBCFsqRpVhQrZKEwuu5iW9PluzN2RVNU6ajzNm-BWDSArowUHvVTQM2RKLaCVYRerZEQ/exec" class="w-full p-2 border border-red-300 rounded-md text-gray-800 focus:ring-red-500 focus:border-red-500">
+            <input type="text" id="api-url-input" placeholder="ตัวอย่าง: https://script.google.com/macros/s/AKfycb.../exec" class="w-full p-2 border border-red-300 rounded-md text-gray-800 focus:ring-red-500 focus:border-red-500">
             <button onclick="setApiUrl()" class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition duration-150">บันทึก URL API</button>
         </div>
 
@@ -234,8 +234,10 @@
 
     <script>
         // --- Configuration & Global State ---
-        // !!! IMPORTANT: REPLACE THIS PLACEHOLDER URL !!!
-        let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || '';
+        // กำหนด URL ของ Google Apps Script Web App ที่ผู้ใช้ให้มาเป็นค่าเริ่มต้น
+        const DEFAULT_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzBCFsqRpVhQrZKEwuu5iW9PluzN2RVNU6ajzNm-BWDSArowUHvVTQM2RKLaCVYRerZEQ/exec";
+        let APPS_SCRIPT_URL = localStorage.getItem('appsScriptUrl') || DEFAULT_APPS_SCRIPT_URL;
+
         const SHEET_NAMES = {
             PERSONNEL: 'Personnel',
             TASKS: 'Tasks'
@@ -799,6 +801,8 @@
         // --- API Setup & Initialization ---
 
         function showApiSetupWarning() {
+            // แสดง URL ปัจจุบันในช่อง Input เพื่อให้แก้ไขได้
+            document.getElementById('api-url-input').value = APPS_SCRIPT_URL || '';
             document.getElementById('api-setup-card').classList.remove('hidden');
         }
 
@@ -823,9 +827,11 @@
             
             // Check API URL on load
             if (!APPS_SCRIPT_URL) {
+                // หาก URL ว่างเปล่าจริง ๆ (ไม่ควรเกิดขึ้นแล้วเนื่องจากมี DEFAULT)
                 showApiSetupWarning();
             } else {
-                // If URL exists, fetch data
+                // เมื่อมี URL แล้ว (จากค่าเริ่มต้นหรือ localStorage) ให้ซ่อนกล่องเตือนและเริ่มโหลดข้อมูล
+                document.getElementById('api-setup-card').classList.add('hidden');
                 refreshAllData();
             }
             
